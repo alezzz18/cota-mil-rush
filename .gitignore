@@ -2,3 +2,7 @@ node_modules/
 dist/
 .vscode/
 *.log
+
+# Herramientas locales para escuchar/exportar la música
+promo/*.wav
+promo/escuchar.html

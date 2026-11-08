@@ -6,9 +6,11 @@ Juego de carro en una autopista de Caracas: esquiva **huecos, motorizados, conos
 
 🎮 **Jugar:** https://alezzz18.github.io/cota-mil-rush/
 
-| Menú | Partida | Fin de partida |
-|---|---|---|
-| ![Menú](docs/menu.png) | ![Partida](docs/partida.png) | ![Fin de partida](docs/fin.png) |
+| Menú | De día: estación de servicio | De noche: faros y combo | Fin de partida |
+|---|---|---|---|
+| ![Menú](docs/menu.png) | ![Estación de servicio](docs/estacion.png) | ![Partida de noche](docs/partida.png) | ![Fin de partida](docs/fin.png) |
+
+<p align="center"><img src="promo/portada-1024x500.png" alt="Portada de Cota Mil Rush" width="640"></p>
 
 ## 🕹️ Cómo se juega
 
@@ -33,7 +35,7 @@ Juego de carro en una autopista de Caracas: esquiva **huecos, motorizados, conos
 - **Motor del juego separado** ([`src/game/engine.ts`](src/game/engine.ts)): estado y reglas sin DOM ni dibujo, con aleatoriedad reproducible por semilla.
 - **Nunca es imposible:** cada fila deja un carril libre al que se puede llegar desde *cualquier* carril libre de la fila anterior, y los vehículos lentos no bloquean el paso.
 - **18 pruebas (Vitest)**, incluida una en la que un conductor automático juega **40 partidas de 2 minutos** sin chocar: si él puede, una persona también.
-- **Música de fondo original generada en vivo** con Web Audio: un secuenciador de batería, bajo, arpegio y melodía. Acelera con el carro, sube de tono con la estrella y se oscurece de noche.
+- **Música de fondo original, "Cota Mil Nights"**, estilo synthwave y generada en vivo con Web Audio: batería ochentera, bajo de sierra, acordes que respiran con el bombo (*sidechain*), arpegio con eco, melodía con vibrato y reverberación. Acelera con el carro, sube de tono con la estrella y se oscurece de noche.
 - **Noche con luces reales:** una capa de oscuridad a la que se le "recortan" los faros y las farolas (`destination-out`), más brillos aditivos encima.
 - **Sonidos sintetizados** (monedas, estrella, estación, por un pelo, choque, récord), vibración en el celular, partículas, sacudida al chocar y pausa automática al cambiar de pestaña.
 - Bucle a 60 fps con `requestAnimationFrame` y paso de tiempo limitado.
@@ -45,10 +47,14 @@ src/
 ├── render/sprites.ts     carro, motos, huecos, conos, monedas, estrellas y estaciones dibujados con Canvas
 ├── render/renderer.ts    vía, noche y luces, efectos, textos y partículas
 ├── audio.ts              efectos con Web Audio
-├── music.ts              música de fondo (secuenciador)
+├── music.ts              música de fondo synthwave (secuenciador + efectos)
 ├── storage.ts            récord y preferencias
 └── main.ts               bucle, controles, pantallas y compartir
 ```
+
+## 🖼️ Portadas
+
+En [`promo/`](promo/) están las portadas (Play Store 1024×500, banner 2048×1000 y vertical 1080×1920 para el celular), dibujadas con los mismos sprites del juego: `npm run dev` y abrir `/promo/portada.html` o `/promo/portada-movil.html`.
 
 ## 🚀 Ejecutar en local
 

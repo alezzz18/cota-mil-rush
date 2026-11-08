@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Portada vertical · Cota Mil Rush</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    html, body { margin: 0; background: #000; }
+    /* Vertical 9:16 (celular, historias, capturas de Play Store): 540 × 960, se exporta al doble */
+    .cover {
+      position: relative;
+      width: 540px;
+      height: 960px;
+      overflow: hidden;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: #0b0f17;
+      color: #fff;
+      text-align: center;
+    }
+    canvas { position: absolute; inset: 0; }
+    .shade-top {
+      position: absolute; left: 0; right: 0; top: 0; height: 470px;
+      background:
+        radial-gradient(80% 60% at 50% 10%, rgba(29,59,110,.95) 0%, transparent 70%),
+        linear-gradient(180deg, rgba(9,12,19,1) 0%, rgba(9,12,19,.96) 55%, rgba(9,12,19,0) 100%);
+    }
+    .shade-bottom {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 200px;
+      background: linear-gradient(0deg, rgba(9,12,19,.95) 0%, rgba(9,12,19,0) 100%);
+    }
+    .text { position: absolute; left: 0; right: 0; top: 64px; padding: 0 36px; }
+    .eyebrow {
+      display: inline-flex; gap: 8px; align-items: center;
+      margin: 0 0 18px; padding: 7px 14px; border-radius: 999px;
+      background: rgba(91,155,255,.16); color: #9cc2ff;
+      font: 700 14px "JetBrains Mono", monospace; letter-spacing: .06em;
+    }
+    h1 { margin: 0; font-size: 96px; font-weight: 800; line-height: .9; letter-spacing: -.04em; }
+    h1 span {
+      display: block; width: max-content; margin: 0 auto;
+      background: linear-gradient(90deg, #5b9bff 0%, #82b3ff 50%, #facc15 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .tag { margin: 20px 0 0; font-size: 21px; line-height: 1.35; color: #c9d1dc; font-weight: 600; }
+    .tag b { color: #facc15; }
+    .bottom { position: absolute; left: 0; right: 0; bottom: 56px; }
+    .cta {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 34px; border-radius: 16px;
+      background: #5b9bff; color: #0b0d10; font-weight: 800; font-size: 24px;
+      box-shadow: 0 12px 34px rgba(91,155,255,.45);
+    }
+    .url { margin: 14px 0 0; color: #98a2ae; font: 500 15px "JetBrains Mono", monospace; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <canvas id="c"></canvas>
+    <div class="shade-top"></div>
+    <div class="shade-bottom"></div>
+    <div class="text">
+      <p class="eyebrow">🚗 AUTOPISTA DE CARACAS</p>
+      <h1>COTA MIL<span>RUSH</span></h1>
+      <p class="tag">Esquiva huecos y motorizados.<br>¡Agarra la <b>⭐ estrella</b> y vuélvete invencible!</p>
+    </div>
+    <div class="bottom">
+      <span class="cta">▶ Juega gratis</span>
+      <p class="url">alezzz18.github.io/cota-mil-rush</p>
+    </div>
+  </div>
+  <script type="module">
+    import * as s from "/src/render/sprites.ts";
+    const W = 540, H = 960;
+    const canvas = document.getElementById("c");
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+
+    const ROAD = 200, L = ROAD / 3, lane = (i) => L * i + L / 2;
+    ctx.translate(W / 2, 600);
+    ctx.rotate(0.12);
+    ctx.scale(1.6, 1.6);
+    ctx.translate(-ROAD / 2, -250);
+
+    const top = -400, bottom = 900;
+    ctx.fillStyle = "#2f5d3a"; ctx.fillRect(-400, top, ROAD + 800, bottom - top);
+    ctx.fillStyle = "#9aa3ad"; ctx.fillRect(-14, top, 14, bottom - top); ctx.fillRect(ROAD, top, 14, bottom - top);
+    ctx.fillStyle = "#87909b";
+    for (let y = top; y < bottom; y += 28) { ctx.fillRect(-14, y, 14, 1); ctx.fillRect(ROAD, y, 14, 1); }
+    for (let y = top; y < bottom; y += 120) {
+      for (const x of [-36, ROAD + 36]) {
+        ctx.fillStyle = "#24492d"; ctx.beginPath(); ctx.arc(x, y + (x > 0 ? 40 : 0), 17, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#3e7a4c"; ctx.beginPath(); ctx.arc(x - 3, y - 3 + (x > 0 ? 40 : 0), 11, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.fillStyle = "#fde68a";
+      for (const x of [-7, ROAD + 7]) { ctx.beginPath(); ctx.arc(x, y + 60, 3, 0, Math.PI * 2); ctx.fill(); }
+    }
+    const g = ctx.createLinearGradient(0, 0, ROAD, 0);
+    g.addColorStop(0, "#2b2f36"); g.addColorStop(0.5, "#353a42"); g.addColorStop(1, "#2b2f36");
+    ctx.fillStyle = g; ctx.fillRect(0, top, ROAD, bottom - top);
+    ctx.fillStyle = "#facc15"; ctx.fillRect(3, top, 3, bottom - top); ctx.fillRect(ROAD - 6, top, 3, bottom - top);
+    ctx.fillStyle = "#e5e7eb";
+    for (const i of [1, 2]) for (let y = top; y < bottom; y += 48) ctx.fillRect(L * i - 1.5, y, 3, 24);
+
+    ctx.strokeStyle = "rgba(255,255,255,.16)"; ctx.lineWidth = 2;
+    for (const [x, y, l] of [[20, 150, 60], [180, 110, 70], [150, 260, 55], [40, 390, 45], [190, 470, 60]]) {
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y + l); ctx.stroke();
+    }
+
+    // Tráfico y premios: entre el texto de arriba y el botón de abajo
+    for (const [y, spin] of [[105, 1], [140, 2.2], [175, 0.4]]) s.coin(ctx, lane(2), y, spin);
+    ctx.save(); ctx.translate(lane(0), 160); ctx.scale(1.5, 1.5); s.star(ctx, 0, 0, 0.2); ctx.restore();
+    s.car(ctx, lane(2), 250, "#f59e0b");
+    s.pothole(ctx, lane(0), 300);
+    s.moto(ctx, lane(0), 390);
+
+    const px = lane(1), py = 265;
+    s.starAura(ctx, px, py, 0.35, 7);
+    s.car(ctx, px, py, "#facc15", true);
+    const colors = ["#f97316", "#fbbf24", "#f472b6", "#60a5fa", "#4ade80", "#ffffff"];
+    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let i = 0; i < 40; i++) {
+      const a = -Math.PI / 2 + (rnd() - 0.5) * 2.4, d = 10 + rnd() * 42, r = 1.4 + rnd() * 2.6;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.globalAlpha = 0.6 + rnd() * 0.4;
+      ctx.fillRect(px + Math.cos(a) * d - r, py - 42 + Math.sin(a) * d * 0.7 - r, r * 2, r * 2);
+    }
+    ctx.globalAlpha = 1;
+  </script>
+</body>
+</html>
