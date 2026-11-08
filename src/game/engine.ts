@@ -24,13 +24,13 @@ export const RULES = {
   laneChangeSpeed: 14, // qué tan rápido llega el carro a su carril
   minRowGap: 190, // px de pista entre filas de obstáculos (a velocidad máxima)
   maxRowGap: 300,
-  shieldSeconds: 5,
+  starSeconds: 7,
   coinValue: 1,
-  shieldSmashBonus: 25, // metros extra por romper un obstáculo con el escudo
+  starSmashBonus: 25, // metros extra por romper un obstáculo siendo invencible
 } as const;
 
 export type ObstacleKind = "pothole" | "cone" | "moto" | "car";
-export type PickupKind = "coin" | "arepa";
+export type PickupKind = "coin" | "star";
 export type EntityKind = ObstacleKind | PickupKind;
 
 export interface Entity {
@@ -56,7 +56,7 @@ export interface GameState {
   maxSpeedReached: number;
   coins: number;
   bonus: number;
-  shield: number;
+  invincible: number;
   lane: number;
   playerX: number;
   entities: Entity[];
@@ -71,10 +71,10 @@ export interface GameState {
 
 export type GameEvent =
   | { type: "coin" }
-  | { type: "arepa" }
+  | { type: "star" }
   | { type: "smash"; kind: ObstacleKind }
   | { type: "crash"; kind: ObstacleKind }
-  | { type: "shield-end" };
+  | { type: "star-end" };
 
 const SIZES: Record<EntityKind, [number, number]> = {
   pothole: [44, 28],
@@ -82,7 +82,7 @@ const SIZES: Record<EntityKind, [number, number]> = {
   moto: [16, 46],
   car: [40, 70],
   coin: [20, 20],
-  arepa: [28, 28],
+  star: [28, 28],
 };
 
 const CAR_COLORS = ["#f59e0b", "#16a34a", "#94a3b8", "#e11d48", "#7c3aed", "#f8fafc"];
@@ -108,7 +108,7 @@ export function createGame(seed = Date.now()): GameState {
     maxSpeedReached: RULES.startSpeed,
     coins: 0,
     bonus: 0,
-    shield: 0,
+    invincible: 0,
     lane: 1,
     playerX: laneCenter(1),
     entities: [],
@@ -187,8 +187,8 @@ export function spawnRow(state: GameState, y = -90) {
   }
 
   // Premios en el carril libre
-  if (state.shield <= 0 && random(state) < 0.07) {
-    spawn(state, "arepa", freeLane, y);
+  if (state.invincible <= 0 && random(state) < 0.07) {
+    spawn(state, "star", freeLane, y);
   } else if (random(state) < 0.55) {
     for (let i = 0; i < 3; i++) spawn(state, "coin", freeLane, y - i * 34);
   }
@@ -206,7 +206,7 @@ export function hits(a: { x: number; y: number; w: number; h: number }, b: { x: 
   );
 }
 
-const isObstacle = (kind: EntityKind): kind is ObstacleKind => kind !== "coin" && kind !== "arepa";
+const isObstacle = (kind: EntityKind): kind is ObstacleKind => kind !== "coin" && kind !== "star";
 
 /* ---------- Paso de simulación ---------- */
 export function step(state: GameState, dt: number): GameEvent[] {
@@ -223,9 +223,9 @@ export function step(state: GameState, dt: number): GameEvent[] {
   const target = laneCenter(state.lane);
   state.playerX += (target - state.playerX) * Math.min(1, RULES.laneChangeSpeed * dt);
 
-  if (state.shield > 0) {
-    state.shield = Math.max(0, state.shield - dt);
-    if (state.shield === 0) events.push({ type: "shield-end" });
+  if (state.invincible > 0) {
+    state.invincible = Math.max(0, state.invincible - dt);
+    if (state.invincible === 0) events.push({ type: "star-end" });
   }
 
   // Mover todo hacia abajo (los vehículos avanzan, así que bajan más lento)
@@ -245,13 +245,13 @@ export function step(state: GameState, dt: number): GameEvent[] {
       state.coins += RULES.coinValue;
       e.y = Infinity;
       events.push({ type: "coin" });
-    } else if (e.kind === "arepa") {
-      state.shield = RULES.shieldSeconds;
+    } else if (e.kind === "star") {
+      state.invincible = RULES.starSeconds;
       e.y = Infinity;
-      events.push({ type: "arepa" });
+      events.push({ type: "star" });
     } else if (isObstacle(e.kind)) {
-      if (state.shield > 0) {
-        state.bonus += RULES.shieldSmashBonus;
+      if (state.invincible > 0) {
+        state.bonus += RULES.starSmashBonus;
         e.y = Infinity;
         events.push({ type: "smash", kind: e.kind });
       } else {

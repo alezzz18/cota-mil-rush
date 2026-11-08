@@ -55,8 +55,11 @@ export class Sound {
     this.tone(1319, 0.12, { delay: 0.06 });
   }
 
-  arepa() {
-    [523, 659, 784, 1047].forEach((f, i) => this.tone(f, 0.12, { delay: i * 0.07, type: "triangle", volume: 0.12 }));
+  /** Fanfarria rápida y brillante al agarrar la estrella. */
+  star() {
+    [523, 784, 659, 988, 784, 1175, 1047, 1568].forEach((f, i) =>
+      this.tone(f, 0.09, { delay: i * 0.055, type: i % 2 ? "square" : "triangle", volume: 0.09 }),
+    );
   }
 
   smash() {

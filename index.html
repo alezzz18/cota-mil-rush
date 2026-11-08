@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cota Mil Rush · juego de carro</title>
-  <meta name="description" content="Juego de carro en una autopista de Caracas: esquiva huecos, motorizados y conos, recoge monedas y arepas. Hecho por Alejandro Gutiérrez con TypeScript y Canvas.">
+  <meta name="description" content="Juego de carro en una autopista de Caracas: esquiva huecos, motorizados y conos, recoge monedas y estrellas. Hecho por Alejandro Gutiérrez con TypeScript y Canvas.">
   <meta name="theme-color" content="#0d0f12">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Cota Mil Rush 🚗💨">
@@ -24,18 +24,18 @@
         <span class="pill top center" id="hud-coins">🪙 0</span>
         <button class="pill top right pill-btn" id="pause" type="button" aria-label="Pausa">⏸</button>
         <span class="pill bottom left mono" id="hud-speed">0 km/h</span>
-        <span class="pill bottom right shield" id="hud-shield" hidden>🫓 escudo 5 s</span>
+        <span class="pill bottom right star" id="hud-star" hidden>⭐ invencible 7 s</span>
       </div>
 
       <section class="overlay" id="menu" aria-labelledby="menu-title">
         <div class="card">
           <h1 class="title" id="menu-title">COTA MIL<br><span>RUSH</span></h1>
-          <p class="tag">Esquiva huecos, motos y conos.<br>Recoge monedas y arepas.</p>
+          <p class="tag">Esquiva huecos, motos y conos.<br>Recoge monedas y estrellas.</p>
           <button class="btn primary" id="play" type="button">▶ Jugar</button>
           <p class="best">🏆 Récord: <strong id="best">—</strong></p>
           <ul class="legend">
             <li>🕳️ Hueco · 🏍️ Motorizado · 🔶 Cono · 🚙 Carro → <b>choque</b></li>
-            <li>🪙 Moneda · 🫓 Arepa → <b>escudo 5 s</b> que rompe obstáculos</li>
+            <li>🪙 Moneda · ⭐ Estrella → <b>invencible 7 s</b>: atraviesas todo</li>
           </ul>
           <p class="controls">
             <span class="desktop-only">⌨️ Flechas o A / D · P para pausar</span>

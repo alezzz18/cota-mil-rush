@@ -73,17 +73,18 @@ export class Renderer {
         case "moto": sprite.moto(ctx, e.x, e.y); break;
         case "car": sprite.car(ctx, e.x, e.y, e.color ?? "#94a3b8"); break;
         case "coin": sprite.coin(ctx, e.x, e.y, this.clock * 5 + e.id); break;
-        case "arepa": sprite.arepa(ctx, e.x, e.y, this.clock); break;
+        case "star": sprite.star(ctx, e.x, e.y, this.clock); break;
       }
     }
 
-    if (state.shield > 0) sprite.shield(ctx, state.playerX, WORLD.playerY, this.clock, state.shield);
+    const invincible = state.invincible > 0;
+    if (invincible) sprite.starAura(ctx, state.playerX, WORLD.playerY, this.clock, state.invincible);
     // Inclinación al cambiar de carril
     const tilt = Math.max(-0.18, Math.min(0.18, (state.playerX - (WORLD.roadX + LANE_WIDTH * state.lane + LANE_WIDTH / 2)) * -0.006));
     ctx.save();
     ctx.translate(state.playerX, WORLD.playerY);
     ctx.rotate(tilt);
-    sprite.car(ctx, 0, 0, "#2563eb", true);
+    sprite.car(ctx, 0, 0, invincible ? sprite.rainbow(this.clock, state.invincible) : "#2563eb", true);
     ctx.restore();
 
     this.drawParticles(dt);

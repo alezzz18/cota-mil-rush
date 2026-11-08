@@ -87,7 +87,7 @@ describe("filas de obstáculos", () => {
       game.entities = [];
       const previousOpen = game.openLanes;
       spawnRow(game, 0);
-      const obstacles = game.entities.filter((e) => e.kind !== "coin" && e.kind !== "arepa");
+      const obstacles = game.entities.filter((e) => e.kind !== "coin" && e.kind !== "star");
       const blocked = new Set(obstacles.map((e) => e.lane));
       expect(blocked.size).toBeLessThan(WORLD.lanes);
       expect(blocked.has(game.lastFreeLane)).toBe(false);
@@ -108,7 +108,7 @@ describe("filas de obstáculos", () => {
     for (let i = 0; i < 200; i++) {
       game.entities = [];
       spawnRow(game, 0);
-      for (const prize of game.entities.filter((e) => e.kind === "coin" || e.kind === "arepa")) {
+      for (const prize of game.entities.filter((e) => e.kind === "coin" || e.kind === "star")) {
         expect(prize.lane).toBe(game.lastFreeLane);
       }
     }
@@ -142,22 +142,22 @@ describe("colisiones", () => {
     expect(game.entities.some((e) => e.id === 999)).toBe(false);
   });
 
-  it("la arepa da un escudo que rompe obstáculos y luego se acaba", () => {
+  it("la estrella te vuelve invencible, rompes obstáculos y luego se acaba", () => {
     const game = running();
-    placeOnPlayer(game, "arepa");
+    placeOnPlayer(game, "star");
     step(game, DT);
-    expect(game.shield).toBeGreaterThan(RULES.shieldSeconds - 0.1);
+    expect(game.invincible).toBeGreaterThan(RULES.starSeconds - 0.1);
 
     placeOnPlayer(game, "car");
     const events = step(game, DT);
     expect(game.status).toBe("running");
     expect(events).toContainEqual({ type: "smash", kind: "car" });
-    expect(distanceMeters(game)).toBeGreaterThanOrEqual(RULES.shieldSmashBonus);
+    expect(distanceMeters(game)).toBeGreaterThanOrEqual(RULES.starSmashBonus);
 
     game.nextRowAt = Infinity;
     game.entities = [];
-    run(game, RULES.shieldSeconds + 0.5);
-    expect(game.shield).toBe(0);
+    run(game, RULES.starSeconds + 0.5);
+    expect(game.invincible).toBe(0);
   });
 
   it("no choca con lo que está en otro carril", () => {
@@ -176,7 +176,7 @@ describe("una partida automática", () => {
    * sobrevive, el juego nunca genera situaciones imposibles.
    */
   function drive(game: GameState) {
-    const obstacles = game.entities.filter((e) => e.kind !== "coin" && e.kind !== "arepa");
+    const obstacles = game.entities.filter((e) => e.kind !== "coin" && e.kind !== "star");
     const inWindow = (lane: number, from: number, to: number) =>
       obstacles.some((e) => e.lane === lane && e.y > WORLD.playerY - from && e.y < WORLD.playerY + to);
     const danger = (lane: number) => inWindow(lane, 230, 75);

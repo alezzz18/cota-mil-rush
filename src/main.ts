@@ -29,7 +29,7 @@ const ui = {
   distance: $("hud-distance"),
   coins: $("hud-coins"),
   speed: $("hud-speed"),
-  shield: $("hud-shield"),
+  star: $("hud-star"),
   menu: $("menu"),
   paused: $("paused"),
   over: $("over"),
@@ -110,10 +110,10 @@ function handle(events: GameEvent[]) {
         sound.coin();
         renderer.burst(x, WORLD.playerY - 30, ["#fbbf24", "#fde68a"], 8, 0.6);
         break;
-      case "arepa":
-        sound.arepa();
-        renderer.burst(x, WORLD.playerY - 30, ["#fbbf24", "#e9c46a", "#ffffff"], 24, 0.9);
-        toast("🫓 ¡Escudo de arepa por 5 segundos!");
+      case "star":
+        sound.star();
+        renderer.burst(x, WORLD.playerY - 30, ["#fbbf24", "#f472b6", "#60a5fa", "#34d399", "#ffffff"], 30, 1);
+        toast("⭐ ¡Invencible por 7 segundos!");
         break;
       case "smash":
         sound.smash();
@@ -125,7 +125,7 @@ function handle(events: GameEvent[]) {
         renderer.crash(x, WORLD.playerY);
         overTimer = window.setTimeout(gameOver, 750);
         break;
-      case "shield-end":
+      case "star-end":
         break;
     }
   }
@@ -134,14 +134,14 @@ function handle(events: GameEvent[]) {
 /* ---------- HUD ---------- */
 let lastHud = "";
 function updateHud() {
-  const hud = `${distanceMeters(state)}|${state.coins}|${speedKmh(state.speed)}|${Math.ceil(state.shield)}`;
+  const hud = `${distanceMeters(state)}|${state.coins}|${speedKmh(state.speed)}|${Math.ceil(state.invincible)}`;
   if (hud === lastHud) return;
   lastHud = hud;
   ui.distance.textContent = `${distanceMeters(state).toLocaleString("es-VE")} m`;
   ui.coins.textContent = `🪙 ${state.coins}`;
   ui.speed.textContent = `${speedKmh(state.speed)} km/h`;
-  ui.shield.hidden = state.shield <= 0;
-  ui.shield.textContent = `🫓 escudo ${Math.ceil(state.shield)} s`;
+  ui.star.hidden = state.invincible <= 0;
+  ui.star.textContent = `⭐ invencible ${Math.ceil(state.invincible)} s`;
 }
 
 let toastTimer = 0;

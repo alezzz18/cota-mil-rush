@@ -109,41 +109,63 @@ export function coin(ctx: Ctx, x: number, y: number, spin: number) {
   }
 }
 
-export function arepa(ctx: Ctx, x: number, y: number, pulse: number) {
-  ctx.save();
-  ctx.shadowColor = "#fbbf24";
-  ctx.shadowBlur = 10 + Math.sin(pulse * 6) * 6;
-  ctx.fillStyle = "#e9c46a";
+/** Puntos de una estrella de 5 picos centrada en (x, y). */
+function starPath(ctx: Ctx, x: number, y: number, outer: number, inner: number, rotation = 0) {
   ctx.beginPath();
-  ctx.arc(x, y, 14, 0, Math.PI * 2);
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? outer : inner;
+    const a = rotation - Math.PI / 2 + (i * Math.PI) / 5;
+    ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+  }
+  ctx.closePath();
+}
+
+/** Premio: estrella que brilla, flota y se balancea. */
+export function star(ctx: Ctx, x: number, y: number, time: number) {
+  const bob = Math.sin(time * 5) * 3;
+  const sway = Math.sin(time * 3) * 0.25;
+  ctx.save();
+  ctx.shadowColor = "#fde047";
+  ctx.shadowBlur = 14 + Math.sin(time * 8) * 6;
+  ctx.fillStyle = "#facc15";
+  starPath(ctx, x, y + bob, 17, 7.5, sway);
   ctx.fill();
   ctx.restore();
-  ctx.strokeStyle = "#a16207";
+  ctx.strokeStyle = "#ca8a04";
   ctx.lineWidth = 2;
-  for (const d of [-6, 0, 6]) {
-    ctx.beginPath();
-    ctx.moveTo(x - 9, y + d);
-    ctx.lineTo(x + 9, y + d);
-    ctx.stroke();
-  }
-  ctx.fillStyle = "#f4dba0";
-  ctx.beginPath();
-  ctx.arc(x - 4, y - 4, 4, 0, Math.PI * 2);
+  ctx.lineJoin = "round";
+  starPath(ctx, x, y + bob, 17, 7.5, sway);
+  ctx.stroke();
+  ctx.fillStyle = "#fef9c3";
+  starPath(ctx, x - 2, y + bob - 3, 6, 2.6, sway);
   ctx.fill();
 }
 
-export function shield(ctx: Ctx, x: number, y: number, time: number, remaining: number) {
-  // Parpadea cuando está por acabarse
-  if (remaining < 1.2 && Math.floor(time * 10) % 2 === 0) return;
+const RAINBOW = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#c084fc"];
+
+/** Color del carro mientras es invencible: cambia de color sin parar (y vuelve al azul al final). */
+export function rainbow(time: number, remaining: number) {
+  if (remaining < 1.5 && Math.floor(time * 8) % 2 === 0) return "#2563eb";
+  return RAINBOW[Math.floor(time * 14) % RAINBOW.length];
+}
+
+/** Brillo y destellos alrededor del carro invencible. */
+export function starAura(ctx: Ctx, x: number, y: number, time: number, remaining: number) {
+  const fading = remaining < 1.5;
   ctx.save();
-  ctx.strokeStyle = "rgba(251,191,36,.85)";
-  ctx.lineWidth = 3;
-  ctx.setLineDash([6, 5]);
-  ctx.lineDashOffset = -time * 40;
-  ctx.beginPath();
-  ctx.ellipse(x, y, 34, 48, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.fillStyle = "rgba(251,191,36,.1)";
-  ctx.fill();
+  const glow = ctx.createRadialGradient(x, y, 8, x, y, 58);
+  glow.addColorStop(0, `rgba(253,224,71,${fading ? 0.18 : 0.35})`);
+  glow.addColorStop(1, "rgba(253,224,71,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(x - 60, y - 60, 120, 120);
+  // Destellos que giran alrededor
+  for (let i = 0; i < 6; i++) {
+    const a = time * 4 + (i * Math.PI) / 3;
+    const sx = x + Math.cos(a) * 30;
+    const sy = y + Math.sin(a) * 44;
+    ctx.fillStyle = RAINBOW[(i + Math.floor(time * 10)) % RAINBOW.length];
+    starPath(ctx, sx, sy, 5, 2, a);
+    ctx.fill();
+  }
   ctx.restore();
 }
