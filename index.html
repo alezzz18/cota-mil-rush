@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Cota Mil Rush · juego de carro</title>
+  <meta name="description" content="Juego de carro en una autopista de Caracas: esquiva huecos, motorizados y conos, recoge monedas y arepas. Hecho por Alejandro Gutiérrez con TypeScript y Canvas.">
+  <meta name="theme-color" content="#0d0f12">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Cota Mil Rush 🚗💨">
+  <meta property="og:description" content="Esquiva huecos, motorizados y conos en la autopista. ¿Cuántos metros aguantas?">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Plus+Jakarta+Sans:wght@500;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <main class="layout">
+    <div class="game" id="game" data-screen="menu">
+      <canvas id="canvas" aria-label="Autopista del juego"></canvas>
+
+      <div class="hud" id="hud" hidden>
+        <span class="pill top left mono" id="hud-distance">0 m</span>
+        <span class="pill top center" id="hud-coins">🪙 0</span>
+        <button class="pill top right pill-btn" id="pause" type="button" aria-label="Pausa">⏸</button>
+        <span class="pill bottom left mono" id="hud-speed">0 km/h</span>
+        <span class="pill bottom right shield" id="hud-shield" hidden>🫓 escudo 5 s</span>
+      </div>
+
+      <section class="overlay" id="menu" aria-labelledby="menu-title">
+        <div class="card">
+          <h1 class="title" id="menu-title">COTA MIL<br><span>RUSH</span></h1>
+          <p class="tag">Esquiva huecos, motos y conos.<br>Recoge monedas y arepas.</p>
+          <button class="btn primary" id="play" type="button">▶ Jugar</button>
+          <p class="best">🏆 Récord: <strong id="best">—</strong></p>
+          <ul class="legend">
+            <li>🕳️ Hueco · 🏍️ Motorizado · 🔶 Cono · 🚙 Carro → <b>choque</b></li>
+            <li>🪙 Moneda · 🫓 Arepa → <b>escudo 5 s</b> que rompe obstáculos</li>
+          </ul>
+          <p class="controls">
+            <span class="desktop-only">⌨️ Flechas o A / D · P para pausar</span>
+            <span class="mobile-only">👆 Desliza o toca a un lado</span>
+          </p>
+          <button class="btn ghost" id="mute" type="button" aria-pressed="true">🔊 Sonido encendido</button>
+        </div>
+      </section>
+
+      <section class="overlay" id="paused" hidden aria-label="Pausa">
+        <div class="card">
+          <h2 class="title small">Pausa</h2>
+          <button class="btn primary" id="resume" type="button">▶ Continuar</button>
+          <button class="btn" id="to-menu" type="button">Salir al menú</button>
+        </div>
+      </section>
+
+      <section class="overlay" id="over" hidden aria-live="polite" aria-label="Fin de la partida">
+        <div class="card">
+          <p class="reason" id="over-reason">¡Chocaste!</p>
+          <p class="title result" id="over-distance">0 m</p>
+          <span class="new" id="over-record" hidden>★ Nuevo récord</span>
+          <div class="stats">
+            <div class="stat"><b>🪙 <span id="over-coins">0</span></b><small>monedas</small></div>
+            <div class="stat"><b id="over-speed">0</b><small>km/h máx.</small></div>
+          </div>
+          <button class="btn primary" id="again" type="button">↻ Jugar otra vez</button>
+          <button class="btn" id="share" type="button">📤 Compartir resultado</button>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status"></div>
+    </div>
+
+    <aside class="side">
+      <p class="eyebrow">Proyecto de portafolio</p>
+      <h2>Cota Mil Rush</h2>
+      <p>Un juego de carro en una autopista de Caracas. La velocidad sube poco a poco y siempre queda un carril libre: ¿cuántos metros aguantas?</p>
+      <ul>
+        <li><b>TypeScript + Canvas</b>, sin motores de juego</li>
+        <li>Motor del juego separado y con <b>pruebas automáticas</b></li>
+        <li>Sonidos sintetizados con <b>Web Audio</b></li>
+        <li>Controles de teclado y táctiles</li>
+      </ul>
+      <p class="links">
+        <a href="https://github.com/alezzz18/cota-mil-rush" target="_blank" rel="noopener">Código en GitHub</a> ·
+        <a href="https://alezzz18.github.io" target="_blank" rel="noopener">Alejandro Gutiérrez</a>
+      </p>
+    </aside>
+  </main>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
