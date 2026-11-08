@@ -1,5 +1,15 @@
-import { RULES, WORLD, LANE_WIDTH, type GameState } from "../game/engine";
+import { RULES, WORLD, LANE_WIDTH, nightAmount, type GameState } from "../game/engine";
 import * as sprite from "./sprites";
+
+interface FloatingText {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  size: number;
+  life: number;
+  total: number;
+}
 
 interface Particle {
   x: number;
@@ -17,6 +27,11 @@ export class Renderer {
   private particles: Particle[] = [];
   private shake = 0;
   private clock = 0;
+  private texts: FloatingText[] = [];
+  private flashColor = "#fff";
+  private flashTime = 0;
+  /** Capa de oscuridad de la noche: se le "recortan" las luces. */
+  private shadeCanvas = document.createElement("canvas");
 
   constructor(private canvas: HTMLCanvasElement) {
     this.ctx = canvas.getContext("2d")!;
@@ -46,6 +61,44 @@ export class Renderer {
     }
   }
 
+  /** Texto que sube y se desvanece (monedas, combos, avisos). */
+  pop(x: number, y: number, text: string, color = "#fde68a", size = 14) {
+    this.texts.push({ x, y, text, color, size, life: 1, total: 1 });
+  }
+
+  /** Monedas seguidas: un solo contador que crece ("+3", "+6", "+9") en vez de textos encimados. */
+  popCoins(x: number, y: number, value: number, big: boolean) {
+    const last = this.texts.find((t) => t.text.startsWith("+") && t.text.endsWith("🪙") && t.total - t.life < 0.45);
+    if (last) {
+      last.text = `+${Number.parseInt(last.text.slice(1)) + value} 🪙`;
+      last.life = last.total - 0.05;
+      last.x = x;
+      return;
+    }
+    this.pop(x, y, `+${value} 🪙`, "#fde68a", big ? 17 : 13);
+  }
+
+  flash(color: string, seconds = 0.25) {
+    this.flashColor = color;
+    this.flashTime = seconds;
+  }
+
+  /** Confeti que cae desde arriba de la pantalla. */
+  confetti() {
+    const colors = ["#f87171", "#fb923c", "#facc15", "#4ade80", "#60a5fa", "#c084fc", "#ffffff"];
+    for (let i = 0; i < 70; i++) {
+      this.particles.push({
+        x: Math.random() * WORLD.width,
+        y: -10 - Math.random() * 80,
+        vx: (Math.random() - 0.5) * 60,
+        vy: 60 + Math.random() * 120,
+        life: 1.4 + Math.random() * 0.8,
+        color: colors[i % colors.length],
+        size: 3 + Math.random() * 3,
+      });
+    }
+  }
+
   crash(x: number, y: number) {
     this.shake = 0.35;
     this.burst(x, y - 30, ["#f97316", "#fbbf24", "#9ca3af", "#ef4444"], 40, 1.4);
@@ -65,6 +118,13 @@ export class Renderer {
     this.drawRoad(state.scroll);
     this.drawSpeedLines(state);
 
+    // Estaciones de servicio a la orilla, debajo de todo lo que va en la vía
+    for (const e of state.entities) {
+      if (e.kind !== "station" || e.y < -120 || e.y > WORLD.height + 120) continue;
+      if (e.lane === 0) sprite.station(ctx, -1, WORLD.roadX - 6, e.y);
+      else sprite.station(ctx, 1, WORLD.roadX + WORLD.roadWidth + 6, e.y);
+    }
+
     for (const e of state.entities) {
       if (e.y < -60 || e.y > WORLD.height + 60) continue;
       switch (e.kind) {
@@ -74,6 +134,7 @@ export class Renderer {
         case "car": sprite.car(ctx, e.x, e.y, e.color ?? "#94a3b8"); break;
         case "coin": sprite.coin(ctx, e.x, e.y, this.clock * 5 + e.id); break;
         case "star": sprite.star(ctx, e.x, e.y, this.clock); break;
+        case "station": sprite.pump(ctx, e.x, e.y, this.clock, Math.min(RULES.maxMultiplier, state.multiplier + 1)); break;
       }
     }
 
@@ -87,7 +148,128 @@ export class Renderer {
     sprite.car(ctx, 0, 0, invincible ? sprite.rainbow(this.clock, state.invincible) : "#2563eb", true);
     ctx.restore();
 
+    this.drawNight(state);
     this.drawParticles(dt);
+    this.drawTexts(dt);
+
+    if (this.flashTime > 0) {
+      this.flashTime = Math.max(0, this.flashTime - dt);
+      ctx.globalAlpha = this.flashTime * 1.2;
+      ctx.fillStyle = this.flashColor;
+      ctx.fillRect(-20, -20, WORLD.width + 40, WORLD.height + 40);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /** Atardecer naranja, oscuridad de noche y luces: faros, farolas, luces traseras y reflejos. */
+  private drawNight(state: GameState) {
+    const night = state.status === "ready" ? 0 : nightAmount(state.time);
+    if (night <= 0) return;
+    const { ctx, canvas } = this;
+    const { roadX, roadWidth, playerY } = WORLD;
+
+    // Tono de atardecer/amanecer en la transición
+    const dusk = Math.sin(Math.PI * night);
+    if (dusk > 0.01) {
+      ctx.fillStyle = `rgba(251,146,60,${0.2 * dusk})`;
+      ctx.fillRect(-20, -20, WORLD.width + 40, WORLD.height + 40);
+    }
+
+    const sc = this.shadeCanvas;
+    if (sc.width !== canvas.width || sc.height !== canvas.height) {
+      sc.width = canvas.width;
+      sc.height = canvas.height;
+    }
+    const s = sc.getContext("2d")!;
+    s.setTransform(1, 0, 0, 1, 0, 0);
+    s.globalCompositeOperation = "source-over";
+    s.clearRect(0, 0, sc.width, sc.height);
+    s.setTransform(canvas.width / WORLD.width, 0, 0, canvas.height / WORLD.height, 0, 0);
+    s.fillStyle = `rgba(5,9,26,${0.78 * night})`;
+    s.fillRect(0, 0, WORLD.width, WORLD.height);
+
+    s.globalCompositeOperation = "destination-out";
+    const light = (x: number, y: number, r: number, strength: number) => {
+      const g = s.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, `rgba(0,0,0,${strength})`);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      s.fillStyle = g;
+      s.fillRect(x - r, y - r, r * 2, r * 2);
+    };
+    const lampYs: number[] = [];
+    for (let y = state.scroll % 120; y < WORLD.height + 60; y += 120) lampYs.push(y);
+    for (const y of lampYs) for (const x of [roadX - 7, roadX + roadWidth + 7]) light(x, y, 58, 0.8);
+    // Lo que hay en la vía tiene reflectores: siempre se alcanza a ver
+    for (const e of state.entities) {
+      const pickup = e.kind === "coin" || e.kind === "star" || e.kind === "station";
+      light(e.x, e.y, pickup ? 34 : 30, pickup ? 0.85 : 0.45);
+      if (e.kind === "station") light(e.lane === 0 ? roadX - 23 : roadX + roadWidth + 23, e.y, 80, 0.9);
+    }
+    // Faros del jugador
+    const beam = (target: CanvasRenderingContext2D, alpha: number) => {
+      const x = state.playerX;
+      const g = target.createLinearGradient(0, playerY - 34, 0, playerY - 270);
+      g.addColorStop(0, `rgba(${target === s ? "0,0,0" : "255,244,200"},${alpha})`);
+      g.addColorStop(1, `rgba(${target === s ? "0,0,0" : "255,244,200"},0)`);
+      target.fillStyle = g;
+      target.beginPath();
+      target.moveTo(x - 14, playerY - 32);
+      target.lineTo(x + 14, playerY - 32);
+      target.lineTo(x + 62, playerY - 270);
+      target.lineTo(x - 62, playerY - 270);
+      target.closePath();
+      target.fill();
+    };
+    beam(s, 1);
+    light(state.playerX, playerY, 46, 0.9);
+
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(sc, 0, 0);
+    ctx.restore();
+
+    // Brillos que suman luz encima de la oscuridad
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    beam(ctx, 0.16 * night);
+    const glow = (x: number, y: number, r: number, color: string) => {
+      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+      g.addColorStop(0, color);
+      g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    };
+    for (const y of lampYs) for (const x of [roadX - 7, roadX + roadWidth + 7]) glow(x, y, 14, `rgba(253,230,138,${0.7 * night})`);
+    for (const e of state.entities) {
+      if (e.kind === "car" || e.kind === "moto") {
+        const back = e.y + e.h / 2 - 3;
+        const offsets = e.kind === "car" ? [-13, 13] : [0];
+        for (const dx of offsets) glow(e.x + dx, back, 12, `rgba(248,40,40,${0.85 * night})`);
+      }
+    }
+    for (const dx of [-13, 13]) glow(state.playerX + dx, playerY + 33, 10, `rgba(248,40,40,${0.7 * night})`);
+    ctx.restore();
+  }
+
+  private drawTexts(dt: number) {
+    const { ctx } = this;
+    this.texts = this.texts.filter((t) => (t.life -= dt) > 0);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    for (const t of this.texts) {
+      const age = t.total - t.life;
+      const scale = age < 0.12 ? 0.6 + (age / 0.12) * 0.5 : 1.1 - Math.min(0.1, (age - 0.12) * 0.5);
+      const y = t.y - age * 45;
+      ctx.globalAlpha = Math.min(1, t.life * 2.5);
+      ctx.font = `800 ${Math.round(t.size * scale)}px "Plus Jakarta Sans", system-ui, sans-serif`;
+      ctx.strokeStyle = "rgba(11,13,16,.85)";
+      ctx.lineWidth = 4;
+      ctx.strokeText(t.text, t.x, y);
+      ctx.fillStyle = t.color;
+      ctx.fillText(t.text, t.x, y);
+    }
+    ctx.globalAlpha = 1;
   }
 
   private drawRoad(scroll: number) {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Cota Mil Rush · juego de carro</title>
-  <meta name="description" content="Juego de carro en una autopista de Caracas: esquiva huecos, motorizados y conos, recoge monedas y estrellas. Hecho por Alejandro Gutiérrez con TypeScript y Canvas.">
+  <meta name="description" content="Juego de carro en una autopista de Caracas: esquiva huecos, motorizados y conos, recoge monedas, estrellas y estaciones de servicio, de día y de noche. Hecho por Alejandro Gutiérrez con TypeScript y Canvas.">
   <meta name="theme-color" content="#0d0f12">
   <meta property="og:type" content="website">
   <meta property="og:title" content="Cota Mil Rush 🚗💨">
@@ -36,12 +36,17 @@
           <ul class="legend">
             <li>🕳️ Hueco · 🏍️ Motorizado · 🔶 Cono · 🚙 Carro → <b>choque</b></li>
             <li>🪙 Moneda · ⭐ Estrella → <b>invencible 7 s</b>: atraviesas todo</li>
+            <li>⛽ Estación de servicio → <b>monedas ×2, ×3…</b> hasta ×5</li>
+            <li>💨 Esquiva al último segundo → <b>¡Por un pelo!</b> y combos</li>
           </ul>
           <p class="controls">
             <span class="desktop-only">⌨️ Flechas o A / D · P para pausar</span>
             <span class="mobile-only">👆 Desliza o toca a un lado</span>
           </p>
-          <button class="btn ghost" id="mute" type="button" aria-pressed="true">🔊 Sonido encendido</button>
+          <div class="toggles">
+            <button class="btn ghost" id="music" type="button" aria-pressed="true">🎵 Música</button>
+            <button class="btn ghost" id="mute" type="button" aria-pressed="true">🔊 Sonido</button>
+          </div>
         </div>
       </section>
 
@@ -61,6 +66,7 @@
           <div class="stats">
             <div class="stat"><b>🪙 <span id="over-coins">0</span></b><small>monedas</small></div>
             <div class="stat"><b id="over-speed">0</b><small>km/h máx.</small></div>
+            <div class="stat"><b>💨 <span id="over-near">0</span></b><small>por un pelo</small></div>
           </div>
           <button class="btn primary" id="again" type="button">↻ Jugar otra vez</button>
           <button class="btn" id="share" type="button">📤 Compartir resultado</button>
@@ -73,11 +79,12 @@
     <aside class="side">
       <p class="eyebrow">Proyecto de portafolio</p>
       <h2>Cota Mil Rush</h2>
-      <p>Un juego de carro en una autopista de Caracas. La velocidad sube poco a poco y siempre queda un carril libre: ¿cuántos metros aguantas?</p>
+      <p>Un juego de carro en una autopista de Caracas. La velocidad sube, cae la noche, las estaciones de servicio multiplican tus monedas y siempre queda un carril libre: ¿cuántos metros aguantas?</p>
       <ul>
         <li><b>TypeScript + Canvas</b>, sin motores de juego</li>
         <li>Motor del juego separado y con <b>pruebas automáticas</b></li>
-        <li>Sonidos sintetizados con <b>Web Audio</b></li>
+        <li>Música y sonidos sintetizados con <b>Web Audio</b></li>
+        <li>Ciclo de <b>día y noche</b> con faros y farolas</li>
         <li>Controles de teclado y táctiles</li>
       </ul>
       <p class="links">

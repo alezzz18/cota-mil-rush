@@ -7,6 +7,10 @@ export class Sound {
     this.muted = muted;
   }
 
+  get context() {
+    return this.ctx;
+  }
+
   /** El navegador solo permite sonido después de una interacción del usuario. */
   unlock() {
     if (!this.ctx) {
@@ -60,6 +64,24 @@ export class Sound {
     [523, 784, 659, 988, 784, 1175, 1047, 1568].forEach((f, i) =>
       this.tone(f, 0.09, { delay: i * 0.055, type: i % 2 ? "square" : "triangle", volume: 0.09 }),
     );
+  }
+
+  /** Caja registradora con campanita: subió el multiplicador. */
+  station(multiplier: number) {
+    const base = 660 + multiplier * 60;
+    this.tone(base, 0.06, { type: "square", volume: 0.07 });
+    this.tone(base * 1.5, 0.08, { type: "square", volume: 0.07, delay: 0.06 });
+    this.tone(base * 2, 0.25, { type: "triangle", volume: 0.1, delay: 0.13 });
+  }
+
+  /** Zumbido de aire al pasar rozando; más agudo con cada combo. */
+  nearMiss(combo: number) {
+    this.noise(0.14, 0.12, 3000 + combo * 600);
+    this.tone(520 + combo * 90, 0.12, { type: "triangle", volume: 0.06, slideTo: 900 + combo * 120 });
+  }
+
+  milestone() {
+    [659, 784, 1047, 1319].forEach((f, i) => this.tone(f, 0.12, { delay: i * 0.08, type: "square", volume: 0.06 }));
   }
 
   smash() {

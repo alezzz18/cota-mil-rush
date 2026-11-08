@@ -27,10 +27,18 @@ export const RULES = {
   starSeconds: 7,
   coinValue: 1,
   starSmashBonus: 25, // metros extra por romper un obstáculo siendo invencible
+  stationGap: [5500, 8000], // px de vía entre estaciones de servicio
+  firstStationAt: 3200,
+  multiplierSeconds: 12,
+  maxMultiplier: 5,
+  nearMissBonus: 10, // metros por esquivar "por un pelo" (se multiplica por el combo)
+  comboWindow: 3, // segundos para encadenar esquives
+  /** Ciclo de día y noche en segundos: día, atardecer, noche, amanecer. */
+  dayCycle: [40, 8, 45, 8],
 } as const;
 
 export type ObstacleKind = "pothole" | "cone" | "moto" | "car";
-export type PickupKind = "coin" | "star";
+export type PickupKind = "coin" | "star" | "station";
 export type EntityKind = ObstacleKind | PickupKind;
 
 export interface Entity {
@@ -44,6 +52,8 @@ export interface Entity {
   /** Velocidad propia hacia arriba (carros y motos también avanzan). */
   ownSpeed: number;
   color?: string;
+  /** El jugador lo esquivó en el último momento (se cuenta al pasar). */
+  dodged?: boolean;
 }
 
 export type Status = "ready" | "running" | "paused" | "over";
@@ -65,12 +75,23 @@ export interface GameState {
   /** Carriles que quedaron libres en la última fila (el jugador puede estar en cualquiera). */
   openLanes: number[];
   crashedInto?: ObstacleKind;
+  /** Multiplicador de monedas de las estaciones de servicio. */
+  multiplier: number;
+  multiplierTime: number;
+  nextStationAt: number;
+  combo: number;
+  lastNearMissAt: number;
+  nearMisses: number;
+  bestCombo: number;
   nextId: number;
   seed: number;
 }
 
 export type GameEvent =
-  | { type: "coin" }
+  | { type: "coin"; value: number }
+  | { type: "station"; multiplier: number }
+  | { type: "multiplier-end" }
+  | { type: "near-miss"; combo: number; bonus: number }
   | { type: "star" }
   | { type: "smash"; kind: ObstacleKind }
   | { type: "crash"; kind: ObstacleKind }
@@ -83,6 +104,7 @@ const SIZES: Record<EntityKind, [number, number]> = {
   car: [40, 70],
   coin: [20, 20],
   star: [28, 28],
+  station: [34, 40],
 };
 
 const CAR_COLORS = ["#f59e0b", "#16a34a", "#94a3b8", "#e11d48", "#7c3aed", "#f8fafc"];
@@ -115,6 +137,13 @@ export function createGame(seed = Date.now()): GameState {
     nextRowAt: 260,
     lastFreeLane: 1,
     openLanes: [0, 1, 2],
+    multiplier: 1,
+    multiplierTime: 0,
+    nextStationAt: RULES.firstStationAt,
+    combo: 0,
+    lastNearMissAt: -Infinity,
+    nearMisses: 0,
+    bestCombo: 0,
     nextId: 1,
     seed: seed | 0,
   };
@@ -133,7 +162,26 @@ export function pause(state: GameState) {
 
 export function steer(state: GameState, direction: -1 | 1) {
   if (state.status !== "running") return;
+  const from = state.lane;
   state.lane = Math.max(0, Math.min(WORLD.lanes - 1, state.lane + direction));
+  if (state.lane === from || state.invincible > 0) return;
+  // ¿Estaba a punto de chocar con algo en el carril que deja? Eso es esquivar "por un pelo".
+  for (const e of state.entities) {
+    if (e.lane === from && isObstacle(e.kind) && e.y > WORLD.playerY - 125 && e.y < WORLD.playerY + 5) e.dodged = true;
+  }
+}
+
+/**
+ * Cuánta noche hay (0 = pleno día, 1 = noche cerrada) según el tiempo de partida.
+ * El ciclo se repite: día → atardecer → noche → amanecer.
+ */
+export function nightAmount(time: number) {
+  const [day, dusk, night, dawn] = RULES.dayCycle;
+  const t = time % (day + dusk + night + dawn);
+  if (t < day) return 0;
+  if (t < day + dusk) return (t - day) / dusk;
+  if (t < day + dusk + night) return 1;
+  return 1 - (t - day - dusk - night) / dawn;
 }
 
 /* ---------- Generación de filas ---------- */
@@ -186,8 +234,11 @@ export function spawnRow(state: GameState, y = -90) {
     spawn(state, pick(state, kinds), lane, y);
   }
 
-  // Premios en el carril libre
-  if (state.invincible <= 0 && random(state) < 0.07) {
+  // Premios en el carril libre. La estación de servicio va a la orilla: solo si el carril libre es uno de los lados.
+  if (state.scroll >= state.nextStationAt && freeLane !== 1) {
+    spawn(state, "station", freeLane, y);
+    state.nextStationAt = state.scroll + RULES.stationGap[0] + random(state) * (RULES.stationGap[1] - RULES.stationGap[0]);
+  } else if (state.invincible <= 0 && random(state) < 0.07) {
     spawn(state, "star", freeLane, y);
   } else if (random(state) < 0.55) {
     for (let i = 0; i < 3; i++) spawn(state, "coin", freeLane, y - i * 34);
@@ -206,7 +257,8 @@ export function hits(a: { x: number; y: number; w: number; h: number }, b: { x: 
   );
 }
 
-const isObstacle = (kind: EntityKind): kind is ObstacleKind => kind !== "coin" && kind !== "star";
+export const isObstacle = (kind: EntityKind): kind is ObstacleKind =>
+  kind === "pothole" || kind === "cone" || kind === "moto" || kind === "car";
 
 /* ---------- Paso de simulación ---------- */
 export function step(state: GameState, dt: number): GameEvent[] {
@@ -227,6 +279,13 @@ export function step(state: GameState, dt: number): GameEvent[] {
     state.invincible = Math.max(0, state.invincible - dt);
     if (state.invincible === 0) events.push({ type: "star-end" });
   }
+  if (state.multiplierTime > 0) {
+    state.multiplierTime = Math.max(0, state.multiplierTime - dt);
+    if (state.multiplierTime === 0) {
+      state.multiplier = 1;
+      events.push({ type: "multiplier-end" });
+    }
+  }
 
   // Mover todo hacia abajo (los vehículos avanzan, así que bajan más lento)
   for (const e of state.entities) e.y += (state.speed - e.ownSpeed) * dt;
@@ -242,9 +301,15 @@ export function step(state: GameState, dt: number): GameEvent[] {
   for (const e of state.entities) {
     if (!hits(player, e)) continue;
     if (e.kind === "coin") {
-      state.coins += RULES.coinValue;
+      const value = RULES.coinValue * state.multiplier;
+      state.coins += value;
       e.y = Infinity;
-      events.push({ type: "coin" });
+      events.push({ type: "coin", value });
+    } else if (e.kind === "station") {
+      state.multiplier = Math.min(RULES.maxMultiplier, state.multiplier + 1);
+      state.multiplierTime = RULES.multiplierSeconds;
+      e.y = Infinity;
+      events.push({ type: "station", multiplier: state.multiplier });
     } else if (e.kind === "star") {
       state.invincible = RULES.starSeconds;
       e.y = Infinity;
@@ -260,6 +325,21 @@ export function step(state: GameState, dt: number): GameEvent[] {
         events.push({ type: "crash", kind: e.kind });
         break;
       }
+    }
+  }
+
+  // Esquives "por un pelo": cuentan cuando el obstáculo ya quedó atrás sin chocar
+  if (state.status === "running") {
+    for (const e of state.entities) {
+      if (!e.dodged || !Number.isFinite(e.y) || e.y < WORLD.playerY + 50) continue;
+      e.dodged = false;
+      state.combo = state.time - state.lastNearMissAt <= RULES.comboWindow ? state.combo + 1 : 1;
+      state.lastNearMissAt = state.time;
+      state.nearMisses += 1;
+      state.bestCombo = Math.max(state.bestCombo, state.combo);
+      const bonus = RULES.nearMissBonus * state.combo;
+      state.bonus += bonus;
+      events.push({ type: "near-miss", combo: state.combo, bonus });
     }
   }
 

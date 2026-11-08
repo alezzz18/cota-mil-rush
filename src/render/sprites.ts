@@ -169,3 +169,73 @@ export function starAura(ctx: Ctx, x: number, y: number, time: number, remaining
   }
   ctx.restore();
 }
+
+/** Surtidor que se recoge en el carril: da el multiplicador que muestra arriba. */
+export function pump(ctx: Ctx, x: number, y: number, time: number, nextMultiplier: number) {
+  ctx.save();
+  ctx.shadowColor = "#38bdf8";
+  ctx.shadowBlur = 12 + Math.sin(time * 7) * 6;
+  ctx.fillStyle = "#2563eb";
+  roundRect(ctx, x - 12, y - 16, 24, 34, 5);
+  ctx.fill();
+  ctx.restore();
+  ctx.fillStyle = "#dbeafe";
+  roundRect(ctx, x - 8, y - 12, 16, 10, 2);
+  ctx.fill();
+  ctx.fillStyle = "#1e3a8a";
+  ctx.font = "bold 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("⛽", x, y - 7);
+  ctx.fillStyle = "#facc15";
+  ctx.fillRect(x - 12, y + 3, 24, 4);
+  // manguera
+  ctx.strokeStyle = "#0f172a";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(x + 12, y - 6);
+  ctx.quadraticCurveTo(x + 20, y + 4, x + 13, y + 14);
+  ctx.stroke();
+  // etiqueta del multiplicador que vas a ganar
+  const bob = Math.sin(time * 6) * 2;
+  ctx.fillStyle = "#facc15";
+  roundRect(ctx, x - 15, y - 37 + bob, 30, 16, 8);
+  ctx.fill();
+  ctx.fillStyle = "#0b0d10";
+  ctx.font = "800 11px system-ui, sans-serif";
+  ctx.fillText(`×${nextMultiplier}`, x, y - 28.5 + bob);
+}
+
+/** Estación de servicio a la orilla de la vía (side = -1 izquierda, 1 derecha). */
+export function station(ctx: Ctx, side: -1 | 1, roadEdge: number, y: number) {
+  const w = 46;
+  const x = side < 0 ? roadEdge - w + 6 : roadEdge - 6;
+  // Piso de concreto
+  ctx.fillStyle = "#b9c0c8";
+  ctx.fillRect(x, y - 70, w, 140);
+  ctx.fillStyle = "#a3abb5";
+  for (let yy = y - 70; yy < y + 70; yy += 20) ctx.fillRect(x, yy, w, 1);
+  // Techo con franjas
+  ctx.fillStyle = "rgba(0,0,0,.25)";
+  ctx.fillRect(x + 4, y - 40, w - 2, 84);
+  ctx.fillStyle = "#f8fafc";
+  roundRect(ctx, x + 1, y - 46, w - 2, 84, 6);
+  ctx.fill();
+  ctx.fillStyle = "#2563eb";
+  ctx.fillRect(x + 1, y - 46, w - 2, 9);
+  ctx.fillRect(x + 1, y + 29, w - 2, 9);
+  ctx.fillStyle = "#facc15";
+  ctx.fillRect(x + 1, y - 37, w - 2, 3);
+  // Letrero
+  ctx.fillStyle = "#1e3a8a";
+  ctx.font = "800 8px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.save();
+  ctx.translate(x + w / 2, y - 10);
+  ctx.rotate(side < 0 ? -Math.PI / 2 : Math.PI / 2);
+  ctx.fillText("ESTACIÓN", 0, 0);
+  ctx.restore();
+  ctx.font = "14px system-ui, sans-serif";
+  ctx.fillText("⛽", x + w / 2, y + 23);
+}
