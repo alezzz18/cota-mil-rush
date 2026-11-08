@@ -61,8 +61,8 @@ canvas { display: block; width: 100%; height: 100%; }
   padding: 6px 11px;
   border-radius: 999px;
   border: 0;
-  background: rgba(13, 15, 18, 0.72);
-  backdrop-filter: blur(6px);
+  background: rgba(13, 15, 18, 0.8);
+  /* Sin backdrop-filter: desenfocar el canvas en cada cuadro es carísimo en celulares */
   color: var(--text);
   font: 800 14px var(--font);
 }

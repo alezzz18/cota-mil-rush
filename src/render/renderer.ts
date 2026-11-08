@@ -30,19 +30,54 @@ export class Renderer {
   private texts: FloatingText[] = [];
   private flashColor = "#fff";
   private flashTime = 0;
-  /** Capa de oscuridad de la noche: se le "recortan" las luces. */
+  /** Capa de oscuridad de la noche: se le "recortan" las luces. Va a media resolución (es todo difuminado). */
   private shadeCanvas = document.createElement("canvas");
+  private beamShade?: CanvasGradient;
+  private beamLight?: CanvasGradient;
+
+  /**
+   * Calidad adaptable: resolución del canvas por cada píxel CSS. En celulares se empieza más bajo
+   * y, si el equipo no aguanta, se baja sola un escalón más (nunca por debajo de 1).
+   */
+  private static readonly QUALITY = [2, 1.5, 1.25, 1];
+  private quality = 0;
+  private slowFrames = 0;
+  private sampledFrames = 0;
 
   constructor(private canvas: HTMLCanvasElement) {
-    this.ctx = canvas.getContext("2d")!;
+    // Sin transparencia: el navegador no tiene que mezclar el canvas con lo que hay detrás
+    this.ctx = canvas.getContext("2d", { alpha: false })!;
+    const dpr = window.devicePixelRatio || 1;
+    const touch = window.matchMedia("(pointer: coarse)").matches;
+    const start = Math.min(dpr, touch ? 1.5 : 2);
+    this.quality = Renderer.QUALITY.findIndex((q) => q <= start);
+    if (this.quality < 0) this.quality = Renderer.QUALITY.length - 1;
     this.resize();
   }
 
   resize() {
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const ratio = Math.min(window.devicePixelRatio || 1, Renderer.QUALITY[this.quality]);
     const rect = this.canvas.getBoundingClientRect();
     this.canvas.width = Math.round(rect.width * ratio);
     this.canvas.height = Math.round(rect.height * ratio);
+  }
+
+  /** Mide los cuadros mientras se juega: si más de la mitad van lentos (< 45 fps), baja la resolución. */
+  private adapt(dt: number, running: boolean) {
+    if (!running || this.quality >= Renderer.QUALITY.length - 1) return;
+    this.sampledFrames++;
+    if (dt > 1 / 45) this.slowFrames++;
+    if (this.sampledFrames < 90) return;
+    if (this.slowFrames > this.sampledFrames / 2) {
+      this.quality++;
+      this.resize();
+    }
+    this.sampledFrames = this.slowFrames = 0;
+  }
+
+  /** Resolución actual (para pruebas y depuración). */
+  get pixelRatio() {
+    return Math.min(window.devicePixelRatio || 1, Renderer.QUALITY[this.quality]);
   }
 
   burst(x: number, y: number, colors: string[], count: number, force = 1) {
@@ -107,6 +142,7 @@ export class Renderer {
   draw(state: GameState, dt: number) {
     const { ctx, canvas } = this;
     this.clock += dt;
+    this.adapt(dt, state.status === "running");
     ctx.setTransform(canvas.width / WORLD.width, 0, 0, canvas.height / WORLD.height, 0, 0);
 
     if (this.shake > 0) {
@@ -168,50 +204,56 @@ export class Renderer {
     const { ctx, canvas } = this;
     const { roadX, roadWidth, playerY } = WORLD;
 
-    // Tono de atardecer/amanecer en la transición
-    const dusk = Math.sin(Math.PI * night);
-    if (dusk > 0.01) {
-      ctx.fillStyle = `rgba(251,146,60,${0.2 * dusk})`;
-      ctx.fillRect(-20, -20, WORLD.width + 40, WORLD.height + 40);
-    }
+    // Tono de atardecer/amanecer mezclado con la oscuridad en una sola capa (una pasada menos por cuadro)
+    const tint = 0.2 * Math.sin(Math.PI * night);
+    const dark = 0.78 * night;
+    const alpha = 1 - (1 - tint) * (1 - dark);
+    const mix = (orange: number, navy: number) => Math.round((orange * tint * (1 - dark) + navy * dark) / alpha);
+    const shade = `rgba(${mix(251, 5)},${mix(146, 9)},${mix(60, 26)},${alpha.toFixed(3)})`;
 
     const sc = this.shadeCanvas;
-    if (sc.width !== canvas.width || sc.height !== canvas.height) {
-      sc.width = canvas.width;
-      sc.height = canvas.height;
+    const sw = Math.max(1, Math.round(canvas.width / 2));
+    const sh = Math.max(1, Math.round(canvas.height / 2));
+    let s = sc.getContext("2d")!;
+    if (sc.width !== sw || sc.height !== sh) {
+      sc.width = sw;
+      sc.height = sh;
+      s = sc.getContext("2d")!;
+      this.beamShade = undefined;
     }
-    const s = sc.getContext("2d")!;
     s.setTransform(1, 0, 0, 1, 0, 0);
-    s.globalCompositeOperation = "source-over";
-    s.clearRect(0, 0, sc.width, sc.height);
-    s.setTransform(canvas.width / WORLD.width, 0, 0, canvas.height / WORLD.height, 0, 0);
-    s.fillStyle = `rgba(5,9,26,${0.78 * night})`;
-    s.fillRect(0, 0, WORLD.width, WORLD.height);
+    s.globalCompositeOperation = "copy";
+    s.fillStyle = shade;
+    s.fillRect(0, 0, sw, sh);
+    s.setTransform(sw / WORLD.width, 0, 0, sh / WORLD.height, 0, 0);
 
     s.globalCompositeOperation = "destination-out";
-    const light = (x: number, y: number, r: number, strength: number) => {
-      const g = s.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, `rgba(0,0,0,${strength})`);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      s.fillStyle = g;
-      s.fillRect(x - r, y - r, r * 2, r * 2);
-    };
+    const light = (x: number, y: number, r: number, strength: number) => sprite.glow(s, x, y, r, "#000", strength);
     const lampYs: number[] = [];
     for (let y = state.scroll % 120; y < WORLD.height + 60; y += 120) lampYs.push(y);
     for (const y of lampYs) for (const x of [roadX - 7, roadX + roadWidth + 7]) light(x, y, 58, 0.8);
     // Lo que hay en la vía tiene reflectores: siempre se alcanza a ver
     for (const e of state.entities) {
+      if (e.y < -90 || e.y > WORLD.height + 90) continue;
       const pickup = e.kind === "coin" || e.kind === "star" || e.kind === "station";
       light(e.x, e.y, pickup ? 34 : 30, pickup ? 0.85 : 0.45);
       if (e.kind === "station") light(e.lane === 0 ? roadX - 23 : roadX + roadWidth + 23, e.y, 80, 0.9);
     }
-    // Faros del jugador
+    // Faros del jugador (el degradado es vertical y fijo: se crea una sola vez)
+    if (!this.beamShade || !this.beamLight) {
+      const make = (target: CanvasRenderingContext2D, rgb: string) => {
+        const g = target.createLinearGradient(0, playerY - 34, 0, playerY - 270);
+        g.addColorStop(0, `rgba(${rgb},1)`);
+        g.addColorStop(1, `rgba(${rgb},0)`);
+        return g;
+      };
+      this.beamShade = make(s, "0,0,0");
+      this.beamLight = make(ctx, "255,244,200");
+    }
     const beam = (target: CanvasRenderingContext2D, alpha: number) => {
       const x = state.playerX;
-      const g = target.createLinearGradient(0, playerY - 34, 0, playerY - 270);
-      g.addColorStop(0, `rgba(${target === s ? "0,0,0" : "255,244,200"},${alpha})`);
-      g.addColorStop(1, `rgba(${target === s ? "0,0,0" : "255,244,200"},0)`);
-      target.fillStyle = g;
+      target.globalAlpha = alpha;
+      target.fillStyle = target === s ? this.beamShade! : this.beamLight!;
       target.beginPath();
       target.moveTo(x - 14, playerY - 32);
       target.lineTo(x + 14, playerY - 32);
@@ -219,35 +261,31 @@ export class Renderer {
       target.lineTo(x - 62, playerY - 270);
       target.closePath();
       target.fill();
+      target.globalAlpha = 1;
     };
     beam(s, 1);
     light(state.playerX, playerY, 46, 0.9);
 
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(sc, 0, 0);
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(sc, 0, 0, canvas.width, canvas.height);
     ctx.restore();
 
     // Brillos que suman luz encima de la oscuridad
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     beam(ctx, 0.16 * night);
-    const glow = (x: number, y: number, r: number, color: string) => {
-      const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-      g.addColorStop(0, color);
-      g.addColorStop(1, "rgba(0,0,0,0)");
-      ctx.fillStyle = g;
-      ctx.fillRect(x - r, y - r, r * 2, r * 2);
-    };
-    for (const y of lampYs) for (const x of [roadX - 7, roadX + roadWidth + 7]) glow(x, y, 14, `rgba(253,230,138,${0.7 * night})`);
+    const AMBER = "rgb(253,230,138)", RED = "rgb(248,40,40)";
+    for (const y of lampYs) for (const x of [roadX - 7, roadX + roadWidth + 7]) sprite.glow(ctx, x, y, 14, AMBER, 0.7 * night);
     for (const e of state.entities) {
-      if (e.kind === "car" || e.kind === "moto") {
+      if ((e.kind === "car" || e.kind === "moto") && e.y > -60 && e.y < WORLD.height + 60) {
         const back = e.y + e.h / 2 - 3;
-        const offsets = e.kind === "car" ? [-13, 13] : [0];
-        for (const dx of offsets) glow(e.x + dx, back, 12, `rgba(248,40,40,${0.85 * night})`);
+        if (e.kind === "moto") sprite.glow(ctx, e.x, back, 12, RED, 0.85 * night);
+        else for (const dx of [-13, 13]) sprite.glow(ctx, e.x + dx, back, 12, RED, 0.85 * night);
       }
     }
-    for (const dx of [-13, 13]) glow(state.playerX + dx, playerY + 33, 10, `rgba(248,40,40,${0.7 * night})`);
+    for (const dx of [-13, 13]) sprite.glow(ctx, state.playerX + dx, playerY + 33, 10, RED, 0.7 * night);
     ctx.restore();
   }
 
@@ -341,7 +379,9 @@ export class Renderer {
 
   private drawParticles(dt: number) {
     const { ctx } = this;
-    this.particles = this.particles.filter((p) => (p.life -= dt) > 0);
+    let alive = 0;
+    for (const p of this.particles) if ((p.life -= dt) > 0) this.particles[alive++] = p;
+    this.particles.length = alive;
     for (const p of this.particles) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;

@@ -82,7 +82,8 @@ export class Music {
 
     // Reverberación: respuesta de impulso sintética (ruido que se apaga en ~3 s, estéreo)
     const reverb = ctx.createConvolver();
-    const seconds = 3;
+    // En celulares una cola más corta: la convolución larga le cuesta mucho al procesador
+    const seconds = window.matchMedia("(pointer: coarse)").matches ? 1.6 : 3;
     const ir = ctx.createBuffer(2, ctx.sampleRate * seconds, ctx.sampleRate);
     for (let ch = 0; ch < 2; ch++) {
       const data = ir.getChannelData(ch);

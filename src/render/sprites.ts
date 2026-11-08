@@ -2,6 +2,37 @@
 
 type Ctx = CanvasRenderingContext2D;
 
+/**
+ * Halo de luz pre-dibujado (degradado radial de un color a transparente).
+ * Pintar esta imagen es mucho más barato que crear un degradado o usar shadowBlur
+ * en cada cuadro, sobre todo en celulares.
+ */
+const glowCache = new Map<string, HTMLCanvasElement>();
+export function glowImage(color: string): HTMLCanvasElement {
+  let img = glowCache.get(color);
+  if (!img) {
+    img = document.createElement("canvas");
+    img.width = img.height = 64;
+    const c = img.getContext("2d")!;
+    const g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, color);
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    c.fillStyle = g;
+    c.fillRect(0, 0, 64, 64);
+    glowCache.set(color, img);
+  }
+  return img;
+}
+
+/** Pinta un halo de radio `r` centrado en (x, y) con la opacidad indicada. */
+export function glow(ctx: Ctx, x: number, y: number, r: number, color: string, alpha = 1) {
+  if (alpha <= 0) return;
+  const prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * Math.min(1, alpha);
+  ctx.drawImage(glowImage(color), x - r, y - r, r * 2, r * 2);
+  ctx.globalAlpha = prev;
+}
+
 function roundRect(ctx: Ctx, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, r);
@@ -124,13 +155,10 @@ function starPath(ctx: Ctx, x: number, y: number, outer: number, inner: number, 
 export function star(ctx: Ctx, x: number, y: number, time: number) {
   const bob = Math.sin(time * 5) * 3;
   const sway = Math.sin(time * 3) * 0.25;
-  ctx.save();
-  ctx.shadowColor = "#fde047";
-  ctx.shadowBlur = 14 + Math.sin(time * 8) * 6;
+  glow(ctx, x, y + bob, 30 + Math.sin(time * 8) * 5, "#fde047", 0.85);
   ctx.fillStyle = "#facc15";
   starPath(ctx, x, y + bob, 17, 7.5, sway);
   ctx.fill();
-  ctx.restore();
   ctx.strokeStyle = "#ca8a04";
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
@@ -153,11 +181,7 @@ export function rainbow(time: number, remaining: number) {
 export function starAura(ctx: Ctx, x: number, y: number, time: number, remaining: number) {
   const fading = remaining < 1.5;
   ctx.save();
-  const glow = ctx.createRadialGradient(x, y, 8, x, y, 58);
-  glow.addColorStop(0, `rgba(253,224,71,${fading ? 0.18 : 0.35})`);
-  glow.addColorStop(1, "rgba(253,224,71,0)");
-  ctx.fillStyle = glow;
-  ctx.fillRect(x - 60, y - 60, 120, 120);
+  glow(ctx, x, y, 60, "#fde047", fading ? 0.18 : 0.35);
   // Destellos que giran alrededor
   for (let i = 0; i < 6; i++) {
     const a = time * 4 + (i * Math.PI) / 3;
@@ -172,13 +196,10 @@ export function starAura(ctx: Ctx, x: number, y: number, time: number, remaining
 
 /** Surtidor que se recoge en el carril: da el multiplicador que muestra arriba. */
 export function pump(ctx: Ctx, x: number, y: number, time: number, nextMultiplier: number) {
-  ctx.save();
-  ctx.shadowColor = "#38bdf8";
-  ctx.shadowBlur = 12 + Math.sin(time * 7) * 6;
+  glow(ctx, x, y + 1, 34 + Math.sin(time * 7) * 5, "#38bdf8", 0.7);
   ctx.fillStyle = "#2563eb";
   roundRect(ctx, x - 12, y - 16, 24, 34, 5);
   ctx.fill();
-  ctx.restore();
   ctx.fillStyle = "#dbeafe";
   roundRect(ctx, x - 8, y - 12, 16, 10, 2);
   ctx.fill();
